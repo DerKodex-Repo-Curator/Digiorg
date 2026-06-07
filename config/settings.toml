@@ -1,0 +1,37 @@
+[project]
+name = "digiorg"
+mode = "development"
+
+[paths]
+db_path = "data/db/digiorg.sqlite"
+state_dir = "data/state"
+memory_dir = "data/memory"
+logs_dir = "data/logs"
+
+[life]
+tick_seconds = 10
+autosave_seconds = 60
+
+[autonomy]
+enabled = true
+sleep_threshold = 70
+hunger_threshold = 70
+hygiene_threshold = 40
+
+[safety]
+internet_enabled = false
+system_write_enabled = false
+max_cpu_percent = 50
+max_memory_mb = 57344
+
+[interface]
+api_host = "127.0.0.1"
+api_port = 8000
+
+[brain]
+llm_enabled = true
+llm_model = "llama3.1:8b"
+llm_host = "http://localhost:11434"
+llm_timeout_seconds = 8
+llm_max_tokens = 300
+llm_every_n_ticks = 3
