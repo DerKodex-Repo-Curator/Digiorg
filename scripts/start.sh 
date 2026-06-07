@@ -1,0 +1,38 @@
+#!/bin/bash
+set -e
+
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$PROJECT_DIR"
+
+echo "Iniciando Digiorg..."
+
+# Verificar que Ollama está corriendo
+if ! curl -s http://localhost:11434 > /dev/null 2>&1; then
+    echo "⚠ Ollama no está corriendo. Iniciando..."
+    ollama serve &
+    sleep 2
+fi
+
+# Backend en background
+echo "Arrancando backend..."
+uvicorn src.interface.api:app --host 127.0.0.1 --port 8000 &
+BACKEND_PID=$!
+
+# Frontend
+echo "Arrancando frontend..."
+cd frontend
+npm run dev &
+FRONTEND_PID=$!
+
+echo ""
+echo "Digiorg iniciado:"
+echo "  Backend:  http://127.0.0.1:8000"
+echo "  Frontend: http://localhost:5173"
+echo "  API docs: http://127.0.0.1:8000/docs"
+echo ""
+echo "Pulsa Ctrl+C para detener todo."
+
+# Limpiar al salir
+trap "kill $BACKEND_PID $FRONTEND_PID 2>/dev/null; exit" SIGINT SIGTERM
+
+wait

@@ -1,7 +1,7 @@
 import json
 import logging
 
-from sqlalchemy import select
+from sqlalchemy import select, desc
 
 from src.brain.llm_client import query_llm
 from src.brain.prompt_builder import build_decision_prompt
@@ -15,13 +15,26 @@ from src.core.models import VitalState
 logger = logging.getLogger("digiorg.brain.decision")
 
 _llm_tick_counter = 0
-_recent_thoughts: list[str] = []
 MAX_THOUGHTS_MEMORY = 5
 
 
 def _get_active_directive_names() -> set[str]:
     directives = get_directives()
     return {directive.name for directive in directives if directive.is_active}
+
+
+def _get_recent_thoughts() -> list[str]:
+    """Recupera los últimos pensamientos desde la base de datos."""
+    from src.core.events import EventLog
+    with SessionLocal() as session:
+        result = session.execute(
+            select(EventLog)
+            .where(EventLog.event_type == "brain_thought")
+            .order_by(desc(EventLog.created_at))
+            .limit(MAX_THOUGHTS_MEMORY)
+        )
+        events = list(result.scalars().all())
+        return [e.description for e in reversed(events)]
 
 
 def _parse_llm_response(response: str) -> tuple[str | None, str | None]:
@@ -87,7 +100,7 @@ def _deterministic_directives(
 
 
 def decide_and_act() -> dict | None:
-    global _llm_tick_counter, _recent_thoughts
+    global _llm_tick_counter
     settings = load_settings()
 
     if not settings["autonomy"]["enabled"]:
@@ -119,11 +132,12 @@ def decide_and_act() -> dict | None:
         action = None
 
         if llm_enabled and _llm_tick_counter % llm_every_n == 0:
+            recent_thoughts = _get_recent_thoughts()
             prompt = build_decision_prompt(
                 state=state,
                 active_directives=list(active_directives),
                 settings=settings,
-                recent_thoughts=_recent_thoughts,
+                recent_thoughts=recent_thoughts,
             )
             raw_response = query_llm(prompt)
 
@@ -131,11 +145,6 @@ def decide_and_act() -> dict | None:
                 action, thought = _parse_llm_response(raw_response)
 
                 if thought:
-                    # Guardar en memoria de conversación
-                    _recent_thoughts.append(thought)
-                    if len(_recent_thoughts) > MAX_THOUGHTS_MEMORY:
-                        _recent_thoughts.pop(0)
-
                     log_event("brain_thought", thought)
                     logger.debug(f"LLM thought: {thought}")
 
@@ -146,6 +155,11 @@ def decide_and_act() -> dict | None:
                         f"Digiorg ha decidido {action} por razonamiento LLM.",
                     )
                     return {"action": action, "source": "llm", "thought": thought}
+            else:
+                logger.warning(
+                    "Ollama no disponible o sin respuesta. "
+                    "Usando lógica determinista como fallback."
+                )
 
         # Fallback determinista con directivas
         action = _deterministic_directives(state, active_directives, settings["autonomy"])

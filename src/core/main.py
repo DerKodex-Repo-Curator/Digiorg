@@ -1,3 +1,7 @@
+"""
+Script de arranque manual para debug sin API.
+En producción usar: uvicorn src.interface.api:app
+"""
 from time import sleep
 
 from src.core.bootstrap import init_db
@@ -24,7 +28,7 @@ def main() -> None:
     init_db()
 
     state = get_or_create_state()
-    print("Digiorg iniciado.")
+    print("Digiorg iniciado en modo debug (sin API).")
     print_state(state)
 
     while True:

@@ -1,7 +1,7 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
-from sqlalchemy import select, func
+from sqlalchemy import select, func, delete
 
 from src.core.database import SessionLocal
 from src.core.models import VitalState
@@ -10,6 +10,7 @@ from src.memory.models import PatternSummary, StateSnapshot
 logger = logging.getLogger("digiorg.memory")
 
 TRACKED_STATS = ["energy", "hunger", "sleepiness", "hygiene"]
+MAX_PATTERN_RECORDS = 10
 
 
 def save_snapshot() -> StateSnapshot:
@@ -26,7 +27,7 @@ def save_snapshot() -> StateSnapshot:
             hygiene=state.hygiene,
             mood=state.mood,
             alive=state.alive,
-            recorded_at=datetime.utcnow(),
+            recorded_at=datetime.now(timezone.utc),
         )
 
         session.add(snapshot)
@@ -51,7 +52,9 @@ def compute_patterns() -> list[PatternSummary]:
     with SessionLocal() as session:
         snapshots = list(
             session.execute(
-                select(StateSnapshot).order_by(StateSnapshot.recorded_at.desc()).limit(100)
+                select(StateSnapshot)
+                .order_by(StateSnapshot.recorded_at.desc())
+                .limit(100)
             ).scalars().all()
         )
 
@@ -67,7 +70,6 @@ def compute_patterns() -> list[PatternSummary]:
             min_val = min(values)
             max_val = max(values)
 
-            # Tendencia: comparar primera mitad con segunda mitad
             mid = len(values) // 2
             first_half_avg = sum(values[mid:]) / len(values[mid:])
             second_half_avg = sum(values[:mid]) / len(values[:mid])
@@ -85,7 +87,7 @@ def compute_patterns() -> list[PatternSummary]:
                 min_value=float(min_val),
                 max_value=float(max_val),
                 trend=trend,
-                computed_at=datetime.utcnow(),
+                computed_at=datetime.now(timezone.utc),
             )
             session.add(summary)
             summaries.append(summary)
@@ -93,6 +95,22 @@ def compute_patterns() -> list[PatternSummary]:
         session.commit()
         for s in summaries:
             session.refresh(s)
+
+        # Limpiar registros antiguos — mantener solo los MAX_PATTERN_RECORDS más recientes por stat
+        for stat in TRACKED_STATS:
+            all_records = list(
+                session.execute(
+                    select(PatternSummary)
+                    .where(PatternSummary.stat == stat)
+                    .order_by(PatternSummary.computed_at.desc())
+                ).scalars().all()
+            )
+            if len(all_records) > MAX_PATTERN_RECORDS:
+                ids_to_delete = [r.id for r in all_records[MAX_PATTERN_RECORDS:]]
+                session.execute(
+                    delete(PatternSummary).where(PatternSummary.id.in_(ids_to_delete))
+                )
+        session.commit()
 
         logger.info(f"Patrones calculados para {len(summaries)} stats.")
         return summaries
