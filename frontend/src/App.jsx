@@ -8,8 +8,11 @@ import SafetyStatus from "./components/SafetyStatus";
 import VitalChart from "./components/VitalChart";
 import DirectivesPanel from "./components/DirectivesPanel";
 
-const WS_URL = "ws://127.0.0.1:8000/ws";
-const API_URL = "http://127.0.0.1:8000";
+const IS_DEV = window.location.hostname === "localhost" && window.location.port === "5173";
+const WS_URL = IS_DEV
+  ? "ws://127.0.0.1:8000/ws"
+  : `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/ws`;
+const API_URL = IS_DEV ? "http://127.0.0.1:8000" : "";
 
 function snapshotToHistory(snapshots) {
   return snapshots
@@ -33,19 +36,16 @@ export default function App() {
   const fetchDirectives = async () => {
     try {
       const res = await fetch(`${API_URL}/directives`);
-      const data = await res.json();
-      setDirectives(data);
+      const json = await res.json();
+      setDirectives(json);
     } catch {}
   };
 
-  // Cargar historial persistido al arrancar
   useEffect(() => {
     fetch(`${API_URL}/memory/snapshots?limit=50`)
       .then((r) => r.json())
       .then((snapshots) => {
-        if (snapshots.length > 0) {
-          setHistory(snapshotToHistory(snapshots));
-        }
+        if (snapshots.length > 0) setHistory(snapshotToHistory(snapshots));
       })
       .catch(() => {});
 

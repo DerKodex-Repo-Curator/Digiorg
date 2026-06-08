@@ -34,7 +34,7 @@ api_port = 8000
 [brain]
 llm_enabled = true
 llm_model = "llama3.1:8b"
-llm_host = "http://localhost:11434"
+llm_host = "http://host.docker.internal:11434"
 llm_timeout_seconds = 8
 llm_max_tokens = 300
 llm_every_n_ticks = 3

@@ -1,6 +1,7 @@
 import { useState } from "react";
 
-const API_URL = "http://127.0.0.1:8000";
+const IS_DEV = window.location.hostname === "localhost" && window.location.port === "5173";
+const API_URL = IS_DEV ? "http://127.0.0.1:8000" : "";
 
 export default function DirectivesPanel({ directives, onRefresh }) {
   const [name, setName] = useState("");
