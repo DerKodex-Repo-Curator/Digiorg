@@ -1,4 +1,11 @@
 # Digiorg
+## Screenshots
+
+![Digiorg distressed state](docs/screenshot_1.png)
+*Digiorg in distressed state — hygiene critical, LLM reasoning about its discomfort*
+
+![Digiorg fresh state](docs/screenshot_2.png)
+*Digiorg fully recovered — vitality 99.2, mood fresh after being cleaned*
 
 A persistent digital organism with an autonomous vital cycle, hybrid directive system, local LLM reasoning and a real-time dashboard.
 
