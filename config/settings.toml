@@ -17,6 +17,9 @@ enabled = true
 sleep_threshold = 70
 hunger_threshold = 70
 hygiene_threshold = 40
+directive_sleep = "priorizar_descanso"
+directive_hunger = "evitar_hambre_critica"
+directive_hygiene = "mantener_higiene_alta"
 
 [safety]
 internet_enabled = false

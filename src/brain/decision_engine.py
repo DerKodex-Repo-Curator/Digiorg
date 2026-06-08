@@ -9,7 +9,7 @@ from src.core.actions import clean_digiorg, feed_digiorg, put_to_sleep
 from src.core.config import load_settings
 from src.core.database import SessionLocal
 from src.core.directive_manager import get_directives
-from src.core.event_manager import get_recent_events, log_event
+from src.core.event_manager import log_event
 from src.core.models import VitalState
 
 logger = logging.getLogger("digiorg.brain.decision")
@@ -24,7 +24,6 @@ def _get_active_directive_names() -> set[str]:
 
 
 def _get_recent_thoughts() -> list[str]:
-    """Recupera los últimos pensamientos desde la base de datos."""
     from src.core.events import EventLog
     with SessionLocal() as session:
         result = session.execute(
@@ -37,7 +36,8 @@ def _get_recent_thoughts() -> list[str]:
         return [e.description for e in reversed(events)]
 
 
-def _parse_llm_response(response: str) -> tuple[str | None, str | None]:
+def parse_llm_response(response: str) -> tuple[str | None, str | None]:
+    """Parsea la respuesta JSON del LLM y devuelve (action, thought)."""
     try:
         start = response.find("{")
         end = response.rfind("}") + 1
@@ -81,18 +81,22 @@ def _deterministic_directives(
     active_directives: set[str],
     autonomy: dict,
 ) -> str | None:
+    directive_sleep = autonomy.get("directive_sleep", "priorizar_descanso")
+    directive_hunger = autonomy.get("directive_hunger", "evitar_hambre_critica")
+    directive_hygiene = autonomy.get("directive_hygiene", "mantener_higiene_alta")
+
     if (
-        "priorizar_descanso" in active_directives
+        directive_sleep in active_directives
         and state.sleepiness >= autonomy["sleep_threshold"]
     ):
         return "sleep"
     if (
-        "evitar_hambre_critica" in active_directives
+        directive_hunger in active_directives
         and state.hunger >= autonomy["hunger_threshold"]
     ):
         return "feed"
     if (
-        "mantener_higiene_alta" in active_directives
+        directive_hygiene in active_directives
         and state.hygiene <= autonomy["hygiene_threshold"]
     ):
         return "clean"
@@ -142,7 +146,7 @@ def decide_and_act() -> dict | None:
             raw_response = query_llm(prompt)
 
             if raw_response is not None:
-                action, thought = _parse_llm_response(raw_response)
+                action, thought = parse_llm_response(raw_response)
 
                 if thought:
                     log_event("brain_thought", thought)

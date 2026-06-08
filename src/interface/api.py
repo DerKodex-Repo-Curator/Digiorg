@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 
 from src.body.body_state import build_body_state
-from src.brain.decision_engine import _parse_llm_response
+from src.brain.decision_engine import parse_llm_response
 from src.brain.llm_client import query_llm
 from src.brain.prompt_builder import build_decision_prompt
 from src.core.actions import clean_digiorg, feed_digiorg, put_to_sleep
@@ -290,7 +290,7 @@ def brain():
     if response is None:
         raise HTTPException(status_code=503, detail="Ollama no disponible.")
 
-    action, thought = _parse_llm_response(response)
+    action, thought = parse_llm_response(response)
 
     return {
         "thought": thought,
