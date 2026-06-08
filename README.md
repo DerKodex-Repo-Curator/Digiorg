@@ -1,48 +1,56 @@
 # Digiorg
 
-Organismo digital persistente con ciclo vital autónomo, motor de decisión con LLM local y dashboard en tiempo real.
+A persistent digital organism with an autonomous vital cycle, hybrid directive system, local LLM reasoning and a real-time dashboard.
 
-## ¿Qué es Digiorg?
+## What is Digiorg?
 
-Digiorg es un organismo digital que vive, toma decisiones y evoluciona de forma autónoma. Tiene stats vitales (energía, hambre, somnolencia, higiene), un motor de decisión que combina lógica determinista con razonamiento LLM local (Ollama), memoria persistente y un dashboard web en tiempo real.
+Digiorg is a digital organism that lives, makes decisions and evolves autonomously. It has vital stats (energy, hunger, sleepiness, hygiene), a decision engine that combines deterministic logic with local LLM reasoning (Ollama), persistent memory and a real-time web dashboard.
 
 ## Stack
 
 - **Backend:** Python 3.10+, FastAPI, SQLAlchemy, SQLite
-- **LLM:** Ollama (local, sin dependencias externas)
+- **LLM:** Ollama (local, no external dependencies)
 - **Frontend:** React + Vite + Recharts
-- **Comunicación:** WebSocket en tiempo real
+- **Communication:** Real-time WebSocket
 
-## Requisitos
+## Requirements
 
 - Python 3.10+
 - Node.js 18+
-- [Ollama](https://ollama.com) instalado y corriendo
+- [Ollama](https://ollama.com) installed and running
 
-## Instalación
+## Installation
 
 ```bash
-# 1. Clonar el repositorio
-git clone <url-del-repo>
-cd digiorg
+# 1. Clone the repository
+git clone https://github.com/Rokhen/Digiorg.git
+cd Digiorg
 
-# 2. Crear entorno virtual
+# 2. Create virtual environment
 python -m venv .venv
 source .venv/bin/activate
 
-# 3. Instalar dependencias Python
+# 3. Install Python dependencies
 pip install -e .
 
-# 4. Instalar modelo LLM
+# 4. Install LLM model
 ollama pull llama3.1:8b
 
-# 5. Instalar dependencias frontend
+# 5. Install frontend dependencies
 cd frontend
 npm install
 cd ..
 ```
 
-## Arranque
+## Quick start with Docker
+
+```bash
+docker compose up
+```
+
+Open your browser at `http://localhost`.
+
+## Development mode
 
 **Terminal 1 — Backend:**
 ```bash
@@ -55,53 +63,64 @@ cd frontend
 npm run dev
 ```
 
-Abre el navegador en `http://localhost:5173`.
+Open your browser at `http://localhost:5173`.
 
 ## API
 
-| Endpoint | Método | Descripción |
+| Endpoint | Method | Description |
 |---|---|---|
-| `/state` | GET | Estado vital completo |
-| `/body` | GET | Avatar y descriptor físico |
-| `/brain` | GET | Razonamiento LLM bajo demanda |
-| `/sensors` | GET | Métricas del sistema (CPU, RAM, disco) |
-| `/safety` | GET | Validación de límites del sistema |
-| `/events` | GET | Historial de eventos |
-| `/memory/snapshots` | GET | Histórico de estados |
-| `/memory/patterns` | GET | Tendencias por stat |
-| `/action/feed` | POST | Alimentar a Digiorg |
-| `/action/sleep` | POST | Dormir |
-| `/action/clean` | POST | Limpiar |
-| `/action/revive` | POST | Resucitar |
-| `/directives` | GET/POST | Listar y crear directivas |
-| `/directives/{name}` | PATCH/DELETE | Activar, desactivar o eliminar |
-| `/scheduler` | GET | Estado del scheduler |
-| `/ws` | WebSocket | Stream en tiempo real |
+| `/state` | GET | Full vital state |
+| `/body` | GET | Avatar and physical descriptor |
+| `/brain` | GET | On-demand LLM reasoning |
+| `/sensors` | GET | System metrics (CPU, RAM, disk) |
+| `/safety` | GET | System limits validation |
+| `/events` | GET | Event history |
+| `/memory/snapshots` | GET | State history |
+| `/memory/patterns` | GET | Stat trends |
+| `/action/feed` | POST | Feed Digiorg |
+| `/action/sleep` | POST | Put to sleep |
+| `/action/clean` | POST | Clean |
+| `/action/revive` | POST | Revive |
+| `/directives` | GET/POST | List and create directives |
+| `/directives/{name}` | PATCH/DELETE | Activate, deactivate or delete |
+| `/scheduler` | GET | Scheduler status |
+| `/ws` | WebSocket | Real-time stream |
 
-Documentación interactiva disponible en `http://127.0.0.1:8000/docs`.
+Interactive documentation available at `http://127.0.0.1:8000/docs`.
 
-## Configuración
+## Directive system
 
-Edita `config/settings.toml` para ajustar el comportamiento:
+Digiorg supports a hybrid directive system with two layers:
+
+**Typed directives** — deterministic, always reliable:
+- `sleep` — triggers sleep when sleepiness exceeds threshold
+- `hunger` — triggers feeding when hunger exceeds threshold
+- `hygiene` — triggers cleaning when hygiene falls below threshold
+
+**Custom directives** — interpreted by the LLM in natural language. Describe any behavior and the LLM will reason about it.
+
+## Configuration
+
+Edit `config/settings.toml` to adjust behavior:
 
 ```toml
 [life]
-tick_seconds = 10          # Frecuencia del ciclo vital
+tick_seconds = 10          # Vital cycle frequency
 
 [autonomy]
-enabled = true             # Activar/desactivar autonomía
-sleep_threshold = 70       # Umbral de somnolencia para dormir
-hunger_threshold = 70      # Umbral de hambre para comer
-hygiene_threshold = 40     # Umbral de higiene para limpiar
+enabled = true             # Enable/disable autonomy
+sleep_threshold = 70       # Sleepiness threshold to sleep
+hunger_threshold = 70      # Hunger threshold to feed
+hygiene_threshold = 40     # Hygiene threshold to clean
 
 [brain]
-llm_enabled = true         # Activar/desactivar LLM
-llm_model = "llama3.1:8b" # Modelo Ollama
-llm_every_n_ticks = 3      # Frecuencia de consulta al LLM
+llm_enabled = true         # Enable/disable LLM
+llm_model = "llama3.1:8b" # Ollama model
+llm_every_n_ticks = 3      # LLM query frequency
 
 [safety]
-max_cpu_percent = 50       # Límite de CPU
-max_memory_mb = 57344      # Límite de RAM en MB
+max_cpu_percent = 50       # CPU limit
+max_memory_mb = 57344      # RAM limit in MB
 ```
 
 ## Tests
@@ -110,20 +129,18 @@ max_memory_mb = 57344      # Límite de RAM en MB
 pytest tests/ -v
 ```
 
-## Estructura
+## Project structure
 
-```
 digiorg/
-├── config/          # Configuración
-├── frontend/        # Dashboard React
+├── config/          # Configuration
+├── frontend/        # React dashboard
 ├── src/
-│   ├── body/        # Representación física y avatar
-│   ├── brain/       # Motor de decisión + LLM
-│   ├── core/        # Núcleo: modelos, estado, acciones, eventos
-│   ├── interface/   # API REST + WebSocket
-│   ├── memory/      # Snapshots y patrones
-│   ├── safety/      # Límites del sistema
-│   ├── scheduler/   # Tick autónomo
-│   └── sensors/     # Métricas del sistema
-└── tests/           # Tests automatizados
-```
+│   ├── body/        # Physical representation and avatar
+│   ├── brain/       # Decision engine + LLM
+│   ├── core/        # Core: models, state, actions, events
+│   ├── interface/   # REST API + WebSocket
+│   ├── memory/      # Snapshots and patterns
+│   ├── safety/      # System limits
+│   ├── scheduler/   # Autonomous tick
+│   └── sensors/     # System metrics
+└── tests/           # Automated tests
