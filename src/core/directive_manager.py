@@ -5,7 +5,12 @@ from src.core.directives import Directive
 from src.core.event_manager import log_event
 
 
-def create_directive(name: str, description: str) -> Directive:
+def create_directive(
+    name: str,
+    description: str,
+    type: str = "custom",
+    threshold: int = 70,
+) -> Directive:
     with SessionLocal() as session:
         existing = session.execute(
             select(Directive).where(Directive.name == name)
@@ -14,12 +19,18 @@ def create_directive(name: str, description: str) -> Directive:
         if existing is not None:
             return existing
 
-        directive = Directive(name=name, description=description, is_active=True)
+        directive = Directive(
+            name=name,
+            description=description,
+            type=type,
+            threshold=threshold,
+            is_active=True,
+        )
         session.add(directive)
         session.commit()
         session.refresh(directive)
 
-        log_event("directive_created", f"Directriz creada: {name}")
+        log_event("directive_created", f"Directive created: {name} (type={type})")
         return directive
 
 
@@ -42,8 +53,8 @@ def set_directive_status(name: str, is_active: bool) -> Directive | None:
         session.commit()
         session.refresh(directive)
 
-        status = "activada" if is_active else "desactivada"
-        log_event("directive_updated", f"Directriz {status}: {name}")
+        status = "activated" if is_active else "deactivated"
+        log_event("directive_updated", f"Directive {status}: {name}")
         return directive
 
 
@@ -59,5 +70,5 @@ def delete_directive(name: str) -> bool:
         session.delete(directive)
         session.commit()
 
-        log_event("directive_deleted", f"Directriz eliminada: {name}")
+        log_event("directive_deleted", f"Directive deleted: {name}")
         return True

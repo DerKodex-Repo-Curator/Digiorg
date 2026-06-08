@@ -120,9 +120,12 @@ def test_survival_feed_on_critical_hunger():
 def test_directive_sleep_threshold():
     state = _make_state(energy=50, sleepiness=75)
     mock_sf, _ = _mock_engine(state)
+
     mock_directive = MagicMock()
-    mock_directive.name = "priorizar_descanso"
+    mock_directive.name = "prioritize_rest"
     mock_directive.is_active = True
+    mock_directive.type = "sleep"
+    mock_directive.threshold = 70
 
     from src.brain.decision_engine import decide_and_act
     with patch("src.brain.decision_engine.load_settings") as mock_settings, \
@@ -137,6 +140,78 @@ def test_directive_sleep_threshold():
     assert result is not None
     assert result["action"] == "sleep"
     assert result["source"] == "directive"
+
+
+def test_directive_hunger_threshold():
+    state = _make_state(energy=50, hunger=75)
+    mock_sf, _ = _mock_engine(state)
+
+    mock_directive = MagicMock()
+    mock_directive.name = "avoid_critical_hunger"
+    mock_directive.is_active = True
+    mock_directive.type = "hunger"
+    mock_directive.threshold = 70
+
+    from src.brain.decision_engine import decide_and_act
+    with patch("src.brain.decision_engine.load_settings") as mock_settings, \
+         patch("src.brain.decision_engine.SessionLocal", mock_sf), \
+         patch("src.brain.decision_engine.get_directives", return_value=[mock_directive]), \
+         patch("src.brain.decision_engine.feed_digiorg") as mock_feed, \
+         patch("src.brain.decision_engine.log_event"):
+        mock_settings.return_value = _base_settings()
+        mock_feed.return_value = state
+        result = decide_and_act()
+
+    assert result is not None
+    assert result["action"] == "feed"
+    assert result["source"] == "directive"
+
+
+def test_directive_hygiene_threshold():
+    state = _make_state(energy=50, hygiene=30)
+    mock_sf, _ = _mock_engine(state)
+
+    mock_directive = MagicMock()
+    mock_directive.name = "maintain_high_hygiene"
+    mock_directive.is_active = True
+    mock_directive.type = "hygiene"
+    mock_directive.threshold = 40
+
+    from src.brain.decision_engine import decide_and_act
+    with patch("src.brain.decision_engine.load_settings") as mock_settings, \
+         patch("src.brain.decision_engine.SessionLocal", mock_sf), \
+         patch("src.brain.decision_engine.get_directives", return_value=[mock_directive]), \
+         patch("src.brain.decision_engine.clean_digiorg") as mock_clean, \
+         patch("src.brain.decision_engine.log_event"):
+        mock_settings.return_value = _base_settings()
+        mock_clean.return_value = state
+        result = decide_and_act()
+
+    assert result is not None
+    assert result["action"] == "clean"
+    assert result["source"] == "directive"
+
+
+def test_custom_directive_ignored_by_deterministic():
+    """Custom directives should not trigger deterministic actions."""
+    state = _make_state(energy=50, sleepiness=75)
+    mock_sf, _ = _mock_engine(state)
+
+    mock_directive = MagicMock()
+    mock_directive.name = "be_more_active"
+    mock_directive.is_active = True
+    mock_directive.type = "custom"
+    mock_directive.threshold = 70
+
+    from src.brain.decision_engine import decide_and_act
+    with patch("src.brain.decision_engine.load_settings") as mock_settings, \
+         patch("src.brain.decision_engine.SessionLocal", mock_sf), \
+         patch("src.brain.decision_engine.get_directives", return_value=[mock_directive]), \
+         patch("src.brain.decision_engine.log_event"):
+        mock_settings.return_value = _base_settings()
+        result = decide_and_act()
+
+    assert result is None
 
 
 def test_no_action_when_stable():

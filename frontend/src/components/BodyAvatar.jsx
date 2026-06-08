@@ -5,7 +5,7 @@ export default function BodyAvatar({ body, alive }) {
         {body.avatar}
       </div>
       <div className="vitality-score">
-        <span className="vitality-label">Vitalidad</span>
+        <span className="vitality-label">Vitality</span>
         <span className="vitality-value">{body.vitality_score}</span>
         <span className="vitality-max">/100</span>
       </div>

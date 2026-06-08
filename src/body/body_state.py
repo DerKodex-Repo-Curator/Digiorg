@@ -1,73 +1,56 @@
 from src.core.models import VitalState
 
-
 MOOD_AVATAR = {
-    "stable":       "( •_•)",
+    "stable":        "( •_•)",
     "uncomfortable": "(ó_ò)",
-    "distressed":   "(>_<)",
-    "critical":     "(x_x)",
-    "relieved":     "( ^_^)",
-    "rested":       "( -_-)zzz",
-    "fresh":        "( ✿_✿)",
-    "reborn":       "( ★_★)",
-    "unknown":      "( ?_?)",
+    "distressed":    "(>_<)",
+    "critical":      "(x_x)",
+    "relieved":      "( ^_^)",
+    "rested":        "( -_-)zzz",
+    "fresh":         "( ✿_✿)",
+    "reborn":        "( ★_★)",
+    "unknown":       "( ?_?)",
 }
 
 MOOD_DESCRIPTION = {
-    "stable":        "Digiorg se encuentra estable y en equilibrio.",
-    "uncomfortable": "Digiorg siente cierta incomodidad. Algo no está bien.",
-    "distressed":    "Digiorg está angustiado. Necesita atención.",
-    "critical":      "Digiorg está en estado crítico. Intervención urgente.",
-    "relieved":      "Digiorg siente alivio tras haber comido.",
-    "rested":        "Digiorg descansa plácidamente.",
-    "fresh":         "Digiorg se siente limpio y renovado.",
-    "reborn":        "Digiorg ha renacido con energía plena.",
-    "unknown":       "El estado de Digiorg es indeterminado.",
+    "stable":        "Digiorg is stable and in balance.",
+    "uncomfortable": "Digiorg feels some discomfort. Something is off.",
+    "distressed":    "Digiorg is distressed. Needs attention.",
+    "critical":      "Digiorg is in critical state. Urgent intervention needed.",
+    "relieved":      "Digiorg feels relieved after eating.",
+    "rested":        "Digiorg is resting peacefully.",
+    "fresh":         "Digiorg feels clean and renewed.",
+    "reborn":        "Digiorg has been reborn with full energy.",
+    "unknown":       "Digiorg's state is undetermined.",
 }
 
 
 def _energy_posture(energy: int) -> str:
-    if energy >= 75:
-        return "erguido y activo"
-    elif energy >= 50:
-        return "ligeramente encorvado"
-    elif energy >= 25:
-        return "apoyado, con esfuerzo"
-    else:
-        return "postrado, sin fuerzas"
+    if energy >= 75:   return "upright and active"
+    elif energy >= 50: return "slightly hunched"
+    elif energy >= 25: return "leaning, with effort"
+    else:              return "prostrated, no strength"
 
 
 def _hunger_expression(hunger: int) -> str:
-    if hunger >= 90:
-        return "retorcido de hambre"
-    elif hunger >= 70:
-        return "con el estómago vacío"
-    elif hunger >= 50:
-        return "con ligero apetito"
-    else:
-        return "saciado"
+    if hunger >= 90:   return "writhing with hunger"
+    elif hunger >= 70: return "with an empty stomach"
+    elif hunger >= 50: return "with mild appetite"
+    else:              return "satiated"
 
 
 def _sleepiness_activity(sleepiness: int) -> str:
-    if sleepiness >= 90:
-        return "al borde del colapso por sueño"
-    elif sleepiness >= 70:
-        return "con los ojos entrecerrados"
-    elif sleepiness >= 50:
-        return "algo adormilado"
-    else:
-        return "despierto y alerta"
+    if sleepiness >= 90:   return "on the verge of sleep collapse"
+    elif sleepiness >= 70: return "with half-closed eyes"
+    elif sleepiness >= 50: return "somewhat drowsy"
+    else:                  return "awake and alert"
 
 
 def _hygiene_appearance(hygiene: int) -> str:
-    if hygiene >= 80:
-        return "limpio y presentable"
-    elif hygiene >= 60:
-        return "algo descuidado"
-    elif hygiene >= 40:
-        return "sucio y maloliente"
-    else:
-        return "en un estado deplorable de suciedad"
+    if hygiene >= 80:   return "clean and presentable"
+    elif hygiene >= 60: return "slightly unkempt"
+    elif hygiene >= 40: return "dirty and smelly"
+    else:               return "in a deplorable state of filth"
 
 
 def build_body_state(state: VitalState) -> dict:
@@ -76,14 +59,14 @@ def build_body_state(state: VitalState) -> dict:
     avatar = MOOD_AVATAR[mood]
     mood_description = MOOD_DESCRIPTION[mood]
 
-    posture = _energy_posture(state.energy)
+    posture    = _energy_posture(state.energy)
     expression = _hunger_expression(state.hunger)
-    activity = _sleepiness_activity(state.sleepiness)
+    activity   = _sleepiness_activity(state.sleepiness)
     appearance = _hygiene_appearance(state.hygiene)
 
     physical_description = (
-        f"Digiorg aparece {posture}, {activity}. "
-        f"Su aspecto es {appearance} y se muestra {expression}."
+        f"Digiorg appears {posture}, {activity}. "
+        f"Its appearance is {appearance} and shows {expression}."
     )
 
     vitality_score = round(
@@ -96,8 +79,8 @@ def build_body_state(state: VitalState) -> dict:
 
     if not state.alive:
         avatar = "(✝_✝)"
-        mood_description = "Digiorg ha dejado de existir."
-        physical_description = "El cuerpo de Digiorg yace inmóvil. Ya no hay signos vitales."
+        mood_description = "Digiorg has ceased to exist."
+        physical_description = "Digiorg's body lies motionless. No vital signs remaining."
         vitality_score = 0.0
 
     return {

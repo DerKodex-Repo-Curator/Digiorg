@@ -20,7 +20,7 @@ logger = logging.getLogger("digiorg.websocket")
 def _clean_thought(raw: str | None) -> str | None:
     if raw is None:
         return None
-    return raw.replace("Digiorg piensa: ", "").strip()
+    return raw.strip()
 
 
 def _build_payload() -> dict:
@@ -47,9 +47,7 @@ def _build_payload() -> dict:
             "active_directives": active_directives,
         },
         "body": body,
-        "thought": _clean_thought(
-            latest_thought.description if latest_thought else None
-        ),
+        "thought": _clean_thought(latest_thought.description if latest_thought else None),
         "latest_action": (
             {
                 "description": latest_autonomous.description,
@@ -78,28 +76,26 @@ async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     settings = load_settings()
     tick_seconds = settings["life"]["tick_seconds"]
-    logger.info("Cliente WebSocket conectado.")
+    logger.info("WebSocket client connected.")
 
     try:
         while True:
             if websocket.client_state != WebSocketState.CONNECTED:
                 break
-
             try:
                 payload = _build_payload()
                 await websocket.send_text(json.dumps(payload))
             except RuntimeError as e:
-                logger.debug(f"WebSocket cerrado durante envío: {e}")
+                logger.debug(f"WebSocket closed during send: {e}")
                 break
             except Exception as e:
-                logger.exception(f"Error construyendo payload WebSocket: {e}")
+                logger.exception(f"Error building WebSocket payload: {e}")
                 break
-
             await asyncio.sleep(tick_seconds)
 
     except WebSocketDisconnect:
-        logger.info("Cliente WebSocket desconectado.")
+        logger.info("WebSocket client disconnected.")
     except Exception as e:
-        logger.debug(f"WebSocket finalizado: {e}")
+        logger.debug(f"WebSocket ended: {e}")
     finally:
-        logger.info("Conexión WebSocket cerrada.")
+        logger.info("WebSocket connection closed.")

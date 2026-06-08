@@ -1,52 +1,57 @@
 from src.core.models import VitalState
 
+SYSTEM_PROMPT = """You are the internal brain of Digiorg, a persistent digital organism with vital stats.
+Your role is to reason about the organism's current state and decide what action to take.
 
-SYSTEM_PROMPT = """Eres el cerebro interno de Digiorg, un organismo digital con estado vital persistente.
-Tu función es razonar sobre el estado actual del organismo y decidir qué acción tomar.
+Absolute rules:
+- If energy <= 10 or sleepiness >= 95: you MUST decide "sleep" (survival).
+- If hunger >= 90: you MUST decide "feed" (survival).
+- Outside those thresholds, reason with your own judgment considering your thought history and active directives.
 
-Reglas absolutas:
-- Si energy <= 10 o sleepiness >= 95: DEBES decidir "sleep" (supervivencia).
-- Si hunger >= 90: DEBES decidir "feed" (supervivencia).
-- Fuera de esos umbrales, razona con criterio propio considerando tu historial de pensamientos.
+Available actions: "feed", "sleep", "clean", "none".
 
-Acciones disponibles: "feed", "sleep", "clean", "none".
-
-Responde ÚNICAMENTE con un objeto JSON con este formato exacto, sin texto adicional:
-{"action": "none", "thought": "Razonamiento breve en primera persona como Digiorg."}"""
+Respond ONLY with a JSON object in this exact format, no additional text:
+{"action": "none", "thought": "Brief reasoning in first person as Digiorg."}"""
 
 
 def build_decision_prompt(
     state: VitalState,
-    active_directives: list[str],
+    active_directives: list,
     settings: dict,
     recent_thoughts: list[str] | None = None,
 ) -> str:
     autonomy = settings["autonomy"]
 
-    directives_text = (
-        ", ".join(active_directives) if active_directives else "ninguna"
-    )
+    if active_directives:
+        directives_text = "\n".join(
+            f"- [{d.type.upper()}] {d.name}: {d.description}"
+            + (f" (threshold: {d.threshold})" if d.type != "custom" else "")
+            for d in active_directives
+        )
+    else:
+        directives_text = "none"
 
     thoughts_section = ""
     if recent_thoughts:
         formatted = "\n".join(f"- {t}" for t in recent_thoughts[-3:])
-        thoughts_section = f"\nMis últimos pensamientos:\n{formatted}\n"
+        thoughts_section = f"\nMy recent thoughts:\n{formatted}\n"
 
     return f"""{SYSTEM_PROMPT}
 
-Estado vital actual:
-- Energía: {state.energy}/100
-- Hambre: {state.hunger}/100 (0=saciado, 100=hambre extrema)
-- Somnolencia: {state.sleepiness}/100 (0=despierto, 100=agotado)
-- Higiene: {state.hygiene}/100 (0=sucio, 100=limpio)
-- Humor: {state.mood}
-- Vivo: {state.alive}
+Current vital state:
+- Energy: {state.energy}/100
+- Hunger: {state.hunger}/100 (0=full, 100=starving)
+- Sleepiness: {state.sleepiness}/100 (0=awake, 100=exhausted)
+- Hygiene: {state.hygiene}/100 (0=dirty, 100=clean)
+- Mood: {state.mood}
+- Alive: {state.alive}
 
-Directivas activas del usuario: {directives_text}
+Active user directives:
+{directives_text}
 
-Umbrales configurados:
-- Dormir si somnolencia >= {autonomy["sleep_threshold"]}
-- Comer si hambre >= {autonomy["hunger_threshold"]}
-- Limpiar si higiene <= {autonomy["hygiene_threshold"]}
+Configured thresholds:
+- Sleep if sleepiness >= {autonomy["sleep_threshold"]}
+- Feed if hunger >= {autonomy["hunger_threshold"]}
+- Clean if hygiene <= {autonomy["hygiene_threshold"]}
 {thoughts_section}
-¿Qué decides hacer ahora?"""
+What do you decide to do now?"""

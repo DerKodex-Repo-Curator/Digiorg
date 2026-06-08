@@ -30,7 +30,7 @@ def get_or_create_state() -> VitalState:
             session.add(state)
             session.commit()
             session.refresh(state)
-            log_event("birth", "Digiorg ha sido creado con estado inicial.")
+            log_event("birth", "Digiorg has been created with initial vital state.")
 
         return state
 
@@ -44,22 +44,21 @@ def update_state_tick() -> VitalState:
         if not state.alive:
             return state
 
-        # Degradación natural
+        # Natural degradation
         state.hunger     = min(100, state.hunger + 2)
         state.sleepiness = min(100, state.sleepiness + 1)
         state.hygiene    = max(0,   state.hygiene - 1)
         state.energy     = max(0,   state.energy - 1)
 
-        # Recuperación pasiva de energía
-        # Umbral elevado a 65 para que actúe incluso con stats moderadas
+        # Passive energy recovery when stats are balanced
         if state.hunger < 65 and state.sleepiness < 65:
             state.energy = min(100, state.energy + 2)
 
-        # Penalización por stats críticas
+        # Penalty for critical stats
         if state.hunger >= 80 or state.sleepiness >= 80:
             state.energy = max(0, state.energy - 1)
 
-        # Estado emocional
+        # Emotional state
         if state.energy <= 10 or state.sleepiness >= 90 or state.hunger >= 90:
             state.mood = "critical"
         elif state.hunger > 80 or state.sleepiness > 80:
@@ -69,13 +68,13 @@ def update_state_tick() -> VitalState:
         else:
             state.mood = "stable"
 
-        # Colapso
+        # Collapse
         if state.energy == 0 and (state.sleepiness >= 100 or state.hunger >= 100):
             state.alive = False
             state.mood = "critical"
             log_event(
                 "death",
-                "Digiorg ha colapsado por agotamiento extremo o hambre crítica con energía nula.",
+                "Digiorg has collapsed due to extreme exhaustion or critical hunger with zero energy.",
             )
 
         state.last_tick = datetime.now(timezone.utc)
@@ -83,7 +82,7 @@ def update_state_tick() -> VitalState:
         session.refresh(state)
 
         description = (
-            f"Estado actualizado: energy={state.energy}, hunger={state.hunger}, "
+            f"State updated: energy={state.energy}, hunger={state.hunger}, "
             f"sleepiness={state.sleepiness}, hygiene={state.hygiene}, "
             f"mood={state.mood}, alive={state.alive}"
         )

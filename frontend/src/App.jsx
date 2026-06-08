@@ -15,16 +15,13 @@ const WS_URL = IS_DEV
 const API_URL = IS_DEV ? "http://127.0.0.1:8000" : "";
 
 function snapshotToHistory(snapshots) {
-  return snapshots
-    .slice()
-    .reverse()
-    .map((s) => ({
-      t: new Date(s.recorded_at).toLocaleTimeString(),
-      energy: s.energy,
-      hunger: s.hunger,
-      sleepiness: s.sleepiness,
-      hygiene: s.hygiene,
-    }));
+  return snapshots.slice().reverse().map((s) => ({
+    t: new Date(s.recorded_at).toLocaleTimeString(),
+    energy: s.energy,
+    hunger: s.hunger,
+    sleepiness: s.sleepiness,
+    hygiene: s.hygiene,
+  }));
 }
 
 export default function App() {
@@ -36,19 +33,15 @@ export default function App() {
   const fetchDirectives = async () => {
     try {
       const res = await fetch(`${API_URL}/directives`);
-      const json = await res.json();
-      setDirectives(json);
+      setDirectives(await res.json());
     } catch {}
   };
 
   useEffect(() => {
     fetch(`${API_URL}/memory/snapshots?limit=50`)
       .then((r) => r.json())
-      .then((snapshots) => {
-        if (snapshots.length > 0) setHistory(snapshotToHistory(snapshots));
-      })
+      .then((s) => { if (s.length > 0) setHistory(snapshotToHistory(s)); })
       .catch(() => {});
-
     fetchDirectives();
   }, []);
 
@@ -63,16 +56,13 @@ export default function App() {
         const payload = JSON.parse(event.data);
         setData(payload);
         setHistory((prev) =>
-          [
-            ...prev,
-            {
-              t: new Date().toLocaleTimeString(),
-              energy: payload.state.energy,
-              hunger: payload.state.hunger,
-              sleepiness: payload.state.sleepiness,
-              hygiene: payload.state.hygiene,
-            },
-          ].slice(-60)
+          [...prev, {
+            t: new Date().toLocaleTimeString(),
+            energy: payload.state.energy,
+            hunger: payload.state.hunger,
+            sleepiness: payload.state.sleepiness,
+            hygiene: payload.state.hygiene,
+          }].slice(-60)
         );
       };
       ws.onclose = () => {
@@ -83,10 +73,7 @@ export default function App() {
     };
 
     connect();
-    return () => {
-      clearTimeout(reconnectTimeout);
-      ws?.close();
-    };
+    return () => { clearTimeout(reconnectTimeout); ws?.close(); };
   }, []);
 
   const callAction = async (action) => {
@@ -96,7 +83,7 @@ export default function App() {
   if (!data) {
     return (
       <div className="loading">
-        <p>Conectando con Digiorg...</p>
+        <p>Connecting to Digiorg...</p>
       </div>
     );
   }
@@ -109,15 +96,13 @@ export default function App() {
         <div className="header-left">
           <h1>DIGIORG</h1>
           <span className={`status-dot ${connected ? "online" : "offline"}`} />
-          <span className="status-label">{connected ? "En línea" : "Desconectado"}</span>
+          <span className="status-label">{connected ? "Online" : "Disconnected"}</span>
         </div>
         <div className="header-right">
           <span className={`scheduler-badge ${scheduler_running ? "active" : "inactive"}`}>
-            {scheduler_running ? "Scheduler activo" : "Scheduler detenido"}
+            {scheduler_running ? "Scheduler active" : "Scheduler stopped"}
           </span>
-          {!safety.safe && (
-            <span className="safety-badge">⚠ Alerta de sistema</span>
-          )}
+          {!safety.safe && <span className="safety-badge">⚠ System alert</span>}
         </div>
       </header>
 
@@ -127,13 +112,13 @@ export default function App() {
         </section>
 
         <section className="card stats-card">
-          <h2>Estado vital</h2>
-          <StatBar label="Energía"     value={state.energy}     color="#4ade80" warning={20} danger={10} />
-          <StatBar label="Hambre"      value={state.hunger}     color="#f87171" warning={60} danger={80} invert />
-          <StatBar label="Somnolencia" value={state.sleepiness} color="#818cf8" warning={60} danger={80} invert />
-          <StatBar label="Higiene"     value={state.hygiene}    color="#38bdf8" warning={40} danger={20} />
+          <h2>Vital state</h2>
+          <StatBar label="Energy"     value={state.energy}     color="#4ade80" warning={20} danger={10} />
+          <StatBar label="Hunger"     value={state.hunger}     color="#f87171" warning={60} danger={80} invert />
+          <StatBar label="Sleepiness" value={state.sleepiness} color="#818cf8" warning={60} danger={80} invert />
+          <StatBar label="Hygiene"    value={state.hygiene}    color="#38bdf8" warning={40} danger={20} />
           <div className="mood-row">
-            <span className="mood-label">Humor:</span>
+            <span className="mood-label">Mood:</span>
             <span className={`mood-value mood-${state.mood}`}>{state.mood}</span>
           </div>
         </section>
@@ -143,7 +128,7 @@ export default function App() {
         </section>
 
         <section className="card actions-card">
-          <h2>Acciones manuales</h2>
+          <h2>Manual actions</h2>
           <ActionButtons onAction={callAction} alive={state.alive} />
         </section>
 
@@ -152,12 +137,12 @@ export default function App() {
         </section>
 
         <section className="card chart-card">
-          <h2>Historial vital</h2>
+          <h2>Vital history</h2>
           <VitalChart history={history} />
         </section>
 
         <section className="card events-card">
-          <h2>Eventos recientes</h2>
+          <h2>Recent events</h2>
           <EventLog events={events} />
         </section>
 

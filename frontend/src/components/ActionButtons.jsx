@@ -1,8 +1,8 @@
 const ACTIONS = [
-  { id: "feed",   label: "🍖 Alimentar", color: "#4ade80" },
-  { id: "sleep",  label: "💤 Dormir",    color: "#818cf8" },
-  { id: "clean",  label: "🚿 Limpiar",   color: "#38bdf8" },
-  { id: "revive", label: "⚡ Revivir",   color: "#f59e0b" },
+  { id: "feed",   label: "🍖 Feed",    color: "#4ade80" },
+  { id: "sleep",  label: "💤 Sleep",   color: "#818cf8" },
+  { id: "clean",  label: "🚿 Clean",   color: "#38bdf8" },
+  { id: "revive", label: "⚡ Revive",  color: "#f59e0b" },
 ];
 
 export default function ActionButtons({ onAction, alive }) {

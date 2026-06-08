@@ -18,9 +18,8 @@ _llm_tick_counter = 0
 MAX_THOUGHTS_MEMORY = 5
 
 
-def _get_active_directive_names() -> set[str]:
-    directives = get_directives()
-    return {directive.name for directive in directives if directive.is_active}
+def _get_active_directives():
+    return [d for d in get_directives() if d.is_active]
 
 
 def _get_recent_thoughts() -> list[str]:
@@ -37,7 +36,7 @@ def _get_recent_thoughts() -> list[str]:
 
 
 def parse_llm_response(response: str) -> tuple[str | None, str | None]:
-    """Parsea la respuesta JSON del LLM y devuelve (action, thought)."""
+    """Parse the LLM JSON response and return (action, thought)."""
     try:
         start = response.find("{")
         end = response.rfind("}") + 1
@@ -49,13 +48,13 @@ def parse_llm_response(response: str) -> tuple[str | None, str | None]:
         thought = data.get("thought", "").strip()
 
         if action not in ("feed", "sleep", "clean", "none"):
-            logger.warning(f"LLM devolvió acción desconocida: {action}. Ignorando.")
+            logger.warning(f"LLM returned unknown action: {action}. Ignoring.")
             return None, thought
 
         return action if action != "none" else None, thought
 
     except json.JSONDecodeError as e:
-        logger.warning(f"LLM respuesta no parseable: {e}. Respuesta: {response[:200]}")
+        logger.warning(f"LLM response not parseable: {e}. Response: {response[:200]}")
         return None, None
 
 
@@ -76,30 +75,18 @@ def _deterministic_survival(state: VitalState) -> str | None:
     return None
 
 
-def _deterministic_directives(
-    state: VitalState,
-    active_directives: set[str],
-    autonomy: dict,
-) -> str | None:
-    directive_sleep = autonomy.get("directive_sleep", "priorizar_descanso")
-    directive_hunger = autonomy.get("directive_hunger", "evitar_hambre_critica")
-    directive_hygiene = autonomy.get("directive_hygiene", "mantener_higiene_alta")
-
-    if (
-        directive_sleep in active_directives
-        and state.sleepiness >= autonomy["sleep_threshold"]
-    ):
-        return "sleep"
-    if (
-        directive_hunger in active_directives
-        and state.hunger >= autonomy["hunger_threshold"]
-    ):
-        return "feed"
-    if (
-        directive_hygiene in active_directives
-        and state.hygiene <= autonomy["hygiene_threshold"]
-    ):
-        return "clean"
+def _deterministic_directives(state: VitalState, active_directives: list) -> str | None:
+    """
+    Acts on typed directives (sleep, hunger, hygiene) using their threshold.
+    Custom directives are handled exclusively by the LLM.
+    """
+    for directive in active_directives:
+        if directive.type == "sleep" and state.sleepiness >= directive.threshold:
+            return "sleep"
+        if directive.type == "hunger" and state.hunger >= directive.threshold:
+            return "feed"
+        if directive.type == "hygiene" and state.hygiene <= directive.threshold:
+            return "clean"
     return None
 
 
@@ -110,7 +97,7 @@ def decide_and_act() -> dict | None:
     if not settings["autonomy"]["enabled"]:
         return None
 
-    active_directives = _get_active_directive_names()
+    active_directives = _get_active_directives()
 
     with SessionLocal() as session:
         state = session.execute(select(VitalState)).scalar_one_or_none()
@@ -118,17 +105,17 @@ def decide_and_act() -> dict | None:
         if state is None or not state.alive:
             return None
 
-        # Supervivencia determinista — siempre primero
+        # Deterministic survival — always first
         survival_action = _deterministic_survival(state)
         if survival_action is not None:
             _execute_action(survival_action)
             log_event(
                 "autonomous_action",
-                f"Digiorg ha decidido {survival_action} por instinto de supervivencia.",
+                f"Digiorg decided to {survival_action} by survival instinct.",
             )
             return {"action": survival_action, "source": "instinct", "thought": None}
 
-        # LLM — solo cada N ticks
+        # LLM — only every N ticks
         _llm_tick_counter += 1
         llm_every_n = settings["brain"].get("llm_every_n_ticks", 3)
         llm_enabled = settings["brain"]["llm_enabled"]
@@ -139,7 +126,7 @@ def decide_and_act() -> dict | None:
             recent_thoughts = _get_recent_thoughts()
             prompt = build_decision_prompt(
                 state=state,
-                active_directives=list(active_directives),
+                active_directives=active_directives,
                 settings=settings,
                 recent_thoughts=recent_thoughts,
             )
@@ -156,23 +143,23 @@ def decide_and_act() -> dict | None:
                     _execute_action(action)
                     log_event(
                         "autonomous_action",
-                        f"Digiorg ha decidido {action} por razonamiento LLM.",
+                        f"Digiorg decided to {action} by LLM reasoning.",
                     )
                     return {"action": action, "source": "llm", "thought": thought}
             else:
                 logger.warning(
-                    "Ollama no disponible o sin respuesta. "
-                    "Usando lógica determinista como fallback."
+                    "Ollama unavailable or no response. "
+                    "Using deterministic fallback."
                 )
 
-        # Fallback determinista con directivas
-        action = _deterministic_directives(state, active_directives, settings["autonomy"])
+        # Deterministic fallback with typed directives
+        action = _deterministic_directives(state, active_directives)
 
         if action is not None:
             _execute_action(action)
             log_event(
                 "autonomous_action",
-                f"Digiorg ha decidido {action} por directriz.",
+                f"Digiorg decided to {action} by directive.",
             )
             return {"action": action, "source": "directive", "thought": thought}
 

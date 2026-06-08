@@ -20,6 +20,7 @@ from src.core.directive_manager import (
     get_directives,
     set_directive_status,
 )
+from src.core.directives import DIRECTIVE_TYPES
 from src.core.event_manager import get_latest_event_by_type, get_recent_events, log_event
 from src.core.logging_config import setup_logging
 from src.core.models import VitalState
@@ -27,11 +28,7 @@ from src.core.state_manager import get_or_create_state
 from src.interface.websocket import websocket_endpoint
 from src.memory.memory_manager import compute_patterns, get_latest_patterns, get_snapshots
 from src.safety.safety_guard import check_system_limits
-from src.scheduler.tick_scheduler import (
-    is_running,
-    start_scheduler,
-    stop_scheduler,
-)
+from src.scheduler.tick_scheduler import is_running, start_scheduler, stop_scheduler
 from src.sensors.system_sensor import read_system_metrics
 
 
@@ -61,6 +58,8 @@ app.add_middleware(
 class DirectiveInput(BaseModel):
     name: str
     description: str
+    type: str = "custom"
+    threshold: int = 70
 
 
 class DirectiveStatusInput(BaseModel):
@@ -76,19 +75,15 @@ def _classify_autonomous_action(description: str | None) -> dict | None:
     source = "unknown"
     reason = None
 
-    if "instinto de supervivencia" in description:
+    if "survival instinct" in description:
         source = "instinct"
-    elif "por directriz" in description:
+    elif "by directive" in description:
         source = "directive"
-        reason = description.split("por directriz", 1)[1].strip().rstrip(".")
-    elif "razonamiento LLM" in description:
+        reason = description.split("by directive", 1)[1].strip().rstrip(".")
+    elif "LLM reasoning" in description:
         source = "llm"
 
-    return {
-        "source": source,
-        "reason": reason,
-        "description": description,
-    }
+    return {"source": source, "reason": reason, "description": description}
 
 
 def _serialize_state(state, directive_list=None, latest_autonomous_event=None) -> dict:
@@ -131,19 +126,12 @@ def _serialize_state(state, directive_list=None, latest_autonomous_event=None) -
 
 @app.get("/")
 def root():
-    return {
-        "message": "Digiorg API activa",
-        "docs": "/docs",
-    }
+    return {"message": "Digiorg API active", "docs": "/docs"}
 
 
 @app.get("/health")
 def health():
-    return {
-        "status": "ok",
-        "service": "digiorg",
-        "scheduler_running": is_running(),
-    }
+    return {"status": "ok", "service": "digiorg", "scheduler_running": is_running()}
 
 
 # ── WebSocket ──────────────────────────────────────────────────────────────────
@@ -153,7 +141,7 @@ async def websocket_route(websocket: WebSocket):
     await websocket_endpoint(websocket)
 
 
-# ── Estado ─────────────────────────────────────────────────────────────────────
+# ── State ──────────────────────────────────────────────────────────────────────
 
 @app.get("/state")
 def state():
@@ -163,7 +151,7 @@ def state():
     return _serialize_state(current_state, directive_list, latest_autonomous_event)
 
 
-# ── Eventos ────────────────────────────────────────────────────────────────────
+# ── Events ─────────────────────────────────────────────────────────────────────
 
 @app.get("/events")
 def events(limit: int = 10):
@@ -179,47 +167,33 @@ def events(limit: int = 10):
     ]
 
 
-# ── Acciones manuales ──────────────────────────────────────────────────────────
+# ── Manual actions ─────────────────────────────────────────────────────────────
 
 @app.post("/action/feed")
 def action_feed():
     current_state = get_or_create_state()
     if not current_state.alive:
-        raise HTTPException(status_code=409, detail="Digiorg no está vivo.")
+        raise HTTPException(status_code=409, detail="Digiorg is not alive.")
     state = feed_digiorg()
-    return {
-        "message": "Digiorg ha comido.",
-        "energy": state.energy,
-        "hunger": state.hunger,
-        "mood": state.mood,
-    }
+    return {"message": "Digiorg has eaten.", "energy": state.energy, "hunger": state.hunger, "mood": state.mood}
 
 
 @app.post("/action/sleep")
 def action_sleep():
     current_state = get_or_create_state()
     if not current_state.alive:
-        raise HTTPException(status_code=409, detail="Digiorg no está vivo.")
+        raise HTTPException(status_code=409, detail="Digiorg is not alive.")
     state = put_to_sleep()
-    return {
-        "message": "Digiorg ha dormido.",
-        "energy": state.energy,
-        "sleepiness": state.sleepiness,
-        "mood": state.mood,
-    }
+    return {"message": "Digiorg has slept.", "energy": state.energy, "sleepiness": state.sleepiness, "mood": state.mood}
 
 
 @app.post("/action/clean")
 def action_clean():
     current_state = get_or_create_state()
     if not current_state.alive:
-        raise HTTPException(status_code=409, detail="Digiorg no está vivo.")
+        raise HTTPException(status_code=409, detail="Digiorg is not alive.")
     state = clean_digiorg()
-    return {
-        "message": "Digiorg ha sido limpiado.",
-        "hygiene": state.hygiene,
-        "mood": state.mood,
-    }
+    return {"message": "Digiorg has been cleaned.", "hygiene": state.hygiene, "mood": state.mood}
 
 
 @app.post("/action/revive")
@@ -228,10 +202,9 @@ def action_revive():
         state = session.execute(select(VitalState)).scalar_one_or_none()
 
         if state is None:
-            raise HTTPException(status_code=404, detail="No existe ningún estado vital.")
-
+            raise HTTPException(status_code=404, detail="No vital state exists.")
         if state.alive:
-            raise HTTPException(status_code=409, detail="Digiorg ya está vivo.")
+            raise HTTPException(status_code=409, detail="Digiorg is already alive.")
 
         state.alive = True
         state.energy = 100
@@ -243,14 +216,13 @@ def action_revive():
 
         session.commit()
         session.refresh(state)
-
-        log_event("revive", "Digiorg ha sido resucitado con estado vital completo.")
+        log_event("revive", "Digiorg has been revived with full vital state.")
 
     if not is_running():
         start_scheduler()
 
     return {
-        "message": "Digiorg ha sido resucitado.",
+        "message": "Digiorg has been revived.",
         "energy": state.energy,
         "hunger": state.hunger,
         "sleepiness": state.sleepiness,
@@ -264,8 +236,7 @@ def action_revive():
 
 @app.get("/body")
 def body():
-    current_state = get_or_create_state()
-    return build_body_state(current_state)
+    return build_body_state(get_or_create_state())
 
 
 # ── Brain ──────────────────────────────────────────────────────────────────────
@@ -274,11 +245,11 @@ def body():
 def brain():
     current_state = get_or_create_state()
     directive_list = get_directives()
-    active_directives = [d.name for d in directive_list if d.is_active]
+    active_directives = [d for d in directive_list if d.is_active]
     settings = load_settings()
 
     if not settings["brain"]["llm_enabled"]:
-        raise HTTPException(status_code=503, detail="LLM deshabilitado en configuración.")
+        raise HTTPException(status_code=503, detail="LLM disabled in configuration.")
 
     prompt = build_decision_prompt(
         state=current_state,
@@ -288,7 +259,7 @@ def brain():
     response = query_llm(prompt)
 
     if response is None:
-        raise HTTPException(status_code=503, detail="Ollama no disponible.")
+        raise HTTPException(status_code=503, detail="Ollama not available.")
 
     action, thought = parse_llm_response(response)
 
@@ -302,11 +273,11 @@ def brain():
             "hygiene": current_state.hygiene,
             "mood": current_state.mood,
         },
-        "active_directives": active_directives,
+        "active_directives": [d.name for d in active_directives],
     }
 
 
-# ── Sensores ───────────────────────────────────────────────────────────────────
+# ── Sensors ────────────────────────────────────────────────────────────────────
 
 @app.get("/sensors")
 def sensors():
@@ -362,9 +333,9 @@ def memory_compute_patterns():
     if not patterns:
         raise HTTPException(
             status_code=422,
-            detail="Insuficientes snapshots para calcular patrones. Espera al menos 2 snapshots."
+            detail="Not enough snapshots to compute patterns. Wait for at least 2 snapshots."
         )
-    return {"message": f"Patrones calculados para {len(patterns)} stats."}
+    return {"message": f"Patterns computed for {len(patterns)} stats."}
 
 
 # ── Scheduler ──────────────────────────────────────────────────────────────────
@@ -377,43 +348,61 @@ def scheduler_status():
 @app.post("/scheduler/start")
 def scheduler_start():
     if is_running():
-        raise HTTPException(status_code=409, detail="El scheduler ya está en ejecución.")
+        raise HTTPException(status_code=409, detail="Scheduler is already running.")
     start_scheduler()
-    return {"message": "Scheduler iniciado.", "running": is_running()}
+    return {"message": "Scheduler started.", "running": is_running()}
 
 
 @app.post("/scheduler/stop")
 def scheduler_stop():
     if not is_running():
-        raise HTTPException(status_code=409, detail="El scheduler no está en ejecución.")
+        raise HTTPException(status_code=409, detail="Scheduler is not running.")
     stop_scheduler()
-    return {"message": "Scheduler detenido.", "running": is_running()}
+    return {"message": "Scheduler stopped.", "running": is_running()}
 
 
-# ── Directivas ─────────────────────────────────────────────────────────────────
+# ── Directives ─────────────────────────────────────────────────────────────────
 
 @app.get("/directives")
 def directives():
-    directive_list = get_directives()
     return [
         {
             "id": d.id,
             "name": d.name,
             "description": d.description,
+            "type": d.type,
+            "threshold": d.threshold,
             "is_active": d.is_active,
             "created_at": d.created_at.isoformat(),
         }
-        for d in directive_list
+        for d in get_directives()
     ]
+
+
+@app.get("/directives/types")
+def directive_types():
+    return {"types": list(DIRECTIVE_TYPES)}
 
 
 @app.post("/directives")
 def create_new_directive(payload: DirectiveInput):
-    directive = create_directive(payload.name, payload.description)
+    if payload.type not in DIRECTIVE_TYPES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid type '{payload.type}'. Valid types: {list(DIRECTIVE_TYPES)}"
+        )
+    directive = create_directive(
+        name=payload.name,
+        description=payload.description,
+        type=payload.type,
+        threshold=payload.threshold,
+    )
     return {
         "id": directive.id,
         "name": directive.name,
         "description": directive.description,
+        "type": directive.type,
+        "threshold": directive.threshold,
         "is_active": directive.is_active,
         "created_at": directive.created_at.isoformat(),
     }
@@ -423,13 +412,13 @@ def create_new_directive(payload: DirectiveInput):
 def update_directive_status(name: str, payload: DirectiveStatusInput):
     directive = set_directive_status(name, payload.is_active)
     if directive is None:
-        raise HTTPException(
-            status_code=404, detail=f"No existe la directriz '{name}'."
-        )
+        raise HTTPException(status_code=404, detail=f"Directive '{name}' not found.")
     return {
         "id": directive.id,
         "name": directive.name,
         "description": directive.description,
+        "type": directive.type,
+        "threshold": directive.threshold,
         "is_active": directive.is_active,
         "created_at": directive.created_at.isoformat(),
     }
@@ -439,7 +428,5 @@ def update_directive_status(name: str, payload: DirectiveStatusInput):
 def delete_existing_directive(name: str):
     deleted = delete_directive(name)
     if not deleted:
-        raise HTTPException(
-            status_code=404, detail=f"No existe la directriz '{name}'."
-        )
-    return {"message": f"Directriz '{name}' eliminada correctamente."}
+        raise HTTPException(status_code=404, detail=f"Directive '{name}' not found.")
+    return {"message": f"Directive '{name}' deleted successfully."}

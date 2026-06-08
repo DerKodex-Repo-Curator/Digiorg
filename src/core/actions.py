@@ -22,7 +22,7 @@ def feed_digiorg() -> VitalState:
         session.commit()
         session.refresh(state)
 
-        log_event("feed", "Digiorg ha comido.")
+        log_event("feed", "Digiorg has eaten.")
         return state
 
 
@@ -41,7 +41,7 @@ def put_to_sleep() -> VitalState:
         session.commit()
         session.refresh(state)
 
-        log_event("sleep", "Digiorg ha dormido.")
+        log_event("sleep", "Digiorg has slept.")
         return state
 
 
@@ -59,5 +59,5 @@ def clean_digiorg() -> VitalState:
         session.commit()
         session.refresh(state)
 
-        log_event("clean", "Digiorg ha sido limpiado.")
+        log_event("clean", "Digiorg has been cleaned.")
         return state

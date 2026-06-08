@@ -8,7 +8,7 @@ from src.sensors.system_sensor import read_system_metrics
 logger = logging.getLogger("digiorg.safety")
 
 _last_alert: dict[str, datetime] = {}
-ALERT_COOLDOWN_SECONDS = 300  # máximo un log cada 5 minutos por tipo
+ALERT_COOLDOWN_SECONDS = 300
 
 
 def _should_log_alert(alert_type: str) -> bool:
@@ -29,8 +29,8 @@ def check_system_limits() -> dict:
 
     if metrics["cpu"]["alert"]:
         msg = (
-            f"Alerta de CPU: {metrics['cpu']['percent']}% "
-            f"supera el límite de {safety['max_cpu_percent']}%."
+            f"CPU alert: {metrics['cpu']['percent']}% "
+            f"exceeds limit of {safety['max_cpu_percent']}%."
         )
         logger.warning(msg)
         if _should_log_alert("cpu"):
@@ -39,8 +39,8 @@ def check_system_limits() -> dict:
 
     if metrics["memory"]["alert"]:
         msg = (
-            f"Alerta de memoria: {metrics['memory']['used_mb']} MB "
-            f"supera el límite de {safety['max_memory_mb']} MB."
+            f"Memory alert: {metrics['memory']['used_mb']} MB "
+            f"exceeds limit of {safety['max_memory_mb']} MB."
         )
         logger.warning(msg)
         if _should_log_alert("memory"):
@@ -61,20 +61,18 @@ def check_system_limits() -> dict:
 
 
 def is_internet_allowed() -> bool:
-    settings = load_settings()
-    return settings["safety"]["internet_enabled"]
+    return load_settings()["safety"]["internet_enabled"]
 
 
 def is_system_write_allowed() -> bool:
-    settings = load_settings()
-    return settings["safety"]["system_write_enabled"]
+    return load_settings()["safety"]["system_write_enabled"]
 
 
 def assert_internet_allowed() -> None:
     if not is_internet_allowed():
-        raise PermissionError("Acceso a internet deshabilitado por política de seguridad.")
+        raise PermissionError("Internet access disabled by security policy.")
 
 
 def assert_system_write_allowed() -> None:
     if not is_system_write_allowed():
-        raise PermissionError("Escritura en sistema deshabilitada por política de seguridad.")
+        raise PermissionError("System write disabled by security policy.")
